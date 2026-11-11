@@ -6,7 +6,7 @@ smallest useful shape: an implementer and a reviewer.
 
 ```text
                  ┌─────────────────────┐
-                 │  Coordinator (you)  │
+                 │ Coordinator (agent) │
                  └──────────┬──────────┘
         worker-start        │        ▲  worker_done / question
                  ┌──────────┴──────────┐
@@ -45,18 +45,23 @@ identically.
 
 1. **Create the handoff artifact first.** Here: a GitHub issue whose body is the
    spec (acceptance criteria + constraints).
-2. **Start the implementer** in a new worktree: `worker-start --agent codex
-   --model gpt-5.6-luna --effort high --worktree new-top-level --name issue-1`.
-3. **End your turn.** Orca wakes the coordinator on `worker_done`, `question`, or
-   `escalation`. Polling is unnecessary and can consume the mail before Orca can
-   deliver it.
-4. **Start the reviewer** when the PR exists, in the same checkout, with
-   `worker-start --agent opencode2`; the repo's `opencode.json` pins its model
+2. **Start the coordinator with one prompt.** An agent in an Orca chat reads
+   `tasks/00-run-demo.md`: it creates a Run, an implementer task, and a reviewer
+   task blocked on it with `--deps`, then starts the implementer —
+   `worker-start --agent codex --model gpt-5.6-luna --effort high --worktree
+   new-top-level --name issue-1`.
+3. **The coordinator ends its turn.** Orca wakes it on `worker_done`, `question`,
+   or `escalation`. Polling is unnecessary and can consume the mail before Orca
+   can deliver it.
+4. **The reviewer starts when the implementer's task completes** — the dep turns
+   ready and the coordinator runs `worker-start --agent opencode2 --worktree
+   name:issue-1` in the same checkout; the repo's `opencode.json` pins its model
    to `openai/gpt-6-luna#xhigh`.
 5. **Read the artifact, not the chat.** The PR and its review are the source of
    truth; the worker's report is the index.
-6. **Loop if needed.** `send` the review back to the implementer; it pushes to the
-   same branch and reports. Start a re-review. Repeat until approved.
+6. **Loop if needed.** The coordinator `send`s the review back to the
+   implementer; it pushes to the same branch and reports, and a re-review
+   follows. The human hears the outcome at the end.
 
 ## Why the same worktree for review
 
@@ -78,7 +83,22 @@ orca worktree list
 orca worktree ps
 orca orchestration task-list
 
-# implement (native launch)
+# the demo's DAG (what tasks/00-run-demo.md drives)
+orca orchestration run-create --objective "Implement and review issue #1" --json
+orca orchestration task-create \
+  --spec "Read tasks/01-implement-issue.md and implement issue #1." \
+  --task-title "Implement issue #1" --json          # -> <IMPL_TASK>
+orca orchestration task-create \
+  --spec "Read tasks/02-review-pr.md and review the open PR that closes issue #1." \
+  --task-title "Review the PR for issue #1" --deps '["<IMPL_TASK>"]' --json
+orca orchestration worker-start --task <IMPL_TASK> \
+  --agent codex --model gpt-5.6-luna --effort high \
+  --worktree new-top-level --repo name:orca-demo --name issue-1
+# on the wake after the implementer completes:
+orca orchestration worker-start --task <REVIEW_TASK> \
+  --agent opencode2 --worktree name:issue-1
+
+# one task, no DAG (the --spec shortcut)
 orca orchestration worker-start --agent codex --model gpt-5.6-luna --effort high \
   --spec "Read tasks/01-implement-issue.md and implement issue #1." \
   --worktree new-top-level --repo name:orca-demo --name issue-1
@@ -91,6 +111,7 @@ orca terminal wait --terminal <HANDLE> --for tui-idle --timeout-ms 60000 --json
 orca orchestration worker-start --spec "..." --terminal <HANDLE> --worktree name:issue-1
 
 # observe and steer
+orca orchestration task-list --ready --brief
 orca orchestration worker-show --dispatch <DISPATCH_ID>
 orca orchestration worker-read --dispatch <DISPATCH_ID> --limit 20
 orca orchestration send --to dispatch:<DISPATCH_ID> \

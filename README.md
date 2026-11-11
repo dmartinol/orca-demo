@@ -1,10 +1,14 @@
 # Pulse — an Orca orchestration demo
 
 Pulse is a deliberately tiny incident-report CLI. It exists to make one Orca
-workflow visible end to end: **one agent implements a GitHub issue, a second agent
-reviews the pull request it opens.**
+workflow visible end to end: **one prompt, and a coordinator agent runs an
+implementer and a reviewer through to a PR and its review.**
 
 ```text
+  you ── one prompt ──▶ coordinator agent (an Orca Run) ──▶ report: PR + review
+                              │  ▲
+                worker-start │  │ worker_done / question
+                              ▼  │ (Orca wakes the coordinator)
   issue #1            worker A: implementer                 worker B: reviewer
   (the spec)  ──────▶ (codex · Luna 5.6 high, worktree) ───▶ PR ──▶ (opencode · Luna 6 xhigh)
                                                                     │
@@ -12,11 +16,15 @@ reviews the pull request it opens.**
                                                           review posted on the PR
 ```
 
-Two agents, one real handoff artifact, and each one launched natively with its
-own model.
+One prompt in, PR and review out. Orca runs the relay — the coordinator never
+polls, and neither do you.
 
 ## What it demonstrates
 
+- **One prompt.** You tell a coordinator agent to run the demo; it creates the
+  Run and both tasks, starts each worker when its dependencies allow, relays
+  questions and review findings, and reports back. Orca wakes it — nobody
+  babysits.
 - **The issue is the spec.** The worker reads acceptance criteria with `gh issue
   view`, implements, tests, pushes, and opens a PR that closes the issue.
 - **Isolation without ceremony.** The implementer gets its own Orca worktree and
@@ -30,8 +38,9 @@ own model.
 - **A different agent reviews.** The reviewer checks the issue's criteria against
   the diff, runs the tests, and posts an approve / comment / request-changes
   review on GitHub.
-- **A loop if needed.** A "request changes" review can be sent back to the
-  implementer, who pushes to the same branch and the reviewer re-checks.
+- **A loop if needed.** A "request changes" review goes back to the implementer
+  as a coordinator message; it pushes to the same branch and a re-review
+  follows. Still no human relay.
 
 ## Quick start
 
@@ -77,30 +86,43 @@ one in `main`.
 
 Issue **#1** (Markdown output format) is the canned target.
 
-Commands use `--repo name:orca-demo`: the repo must be registered in Orca under
-the display name `orca-demo`, which is what `orca repo add --path .` records from
-the folder name. If your folder or name differs, use `--repo path:<abs path>` or
-the id from `orca repo list --json`.
+**The demo is one prompt.** In an Orca agent chat in this repo, say:
+
+> Read `tasks/00-run-demo.md` and run it for issue #1.
+
+That is the whole human interface. The coordinator agent creates a Run, an
+implementer task, and a reviewer task blocked on it with `--deps`; it starts
+each worker when ready, relays questions and review findings, and reports back
+with the PR and its review. Watch it live from any Orca terminal:
+
+```bash
+orca worktree ps
+orca orchestration task-list
+```
+
+Under the hood, the two workers the coordinator starts (the full wake loop is
+in the brief):
 
 **Implement** — new worktree, Codex on Luna 5.6 (high):
 
 ```bash
-orca orchestration worker-start \
-  --spec "Read tasks/01-implement-issue.md and implement issue #1. Open a PR when green." \
-  --task-title "Implement issue #1" \
+orca orchestration worker-start --task <IMPL_TASK> \
   --agent codex --model gpt-5.6-luna --effort high \
   --worktree new-top-level --name issue-1 --repo name:orca-demo --json
 ```
 
-**Review** — same checkout, OpenCode on Luna 6 (xhigh):
+**Review** — same checkout, OpenCode on Luna 6 (xhigh), started when the
+implementer's task completes:
 
 ```bash
-orca orchestration worker-start \
-  --spec "Read tasks/02-review-pr.md and review PR #<PR> against issue #1." \
-  --task-title "Review PR #<PR>" \
-  --agent opencode2 \
-  --worktree name:issue-1 --json
+orca orchestration worker-start --task <REVIEW_TASK> \
+  --agent opencode2 --worktree name:issue-1 --json
 ```
+
+Commands use `--repo name:orca-demo`: the repo must be registered in Orca under
+the display name `orca-demo`, which is what `orca repo add --path .` records from
+the folder name. If your folder or name differs, use `--repo path:<abs path>` or
+the id from `orca repo list --json`.
 
 Full runbook, talking points, the fix loop, and reset steps:
 **[docs/demo-script.md](docs/demo-script.md)**.

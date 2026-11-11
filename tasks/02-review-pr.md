@@ -1,18 +1,24 @@
 # Review a pull request
 
-Your task names a **PR number** (and the issue it closes). You are reviewing, not
-implementing: the checkout is already on the PR branch.
+Your task names an **issue number**: review the open PR that closes it. You are
+reviewing, not implementing: the checkout is already on the PR branch.
 
 ## Steps
 
-1. Read the PR and its diff:
+1. Find the PR and read it. The checkout is on the PR branch, so `gh pr view`
+   with no argument resolves it:
 
    ```bash
-   gh pr view <PR> --json number,title,body,files,commits,headRefName,baseRefName
-   gh pr diff <PR>
+   gh pr view --json number,title,body,files,commits,headRefName,baseRefName
+   gh pr diff
    ```
 
-   If the checkout is not on the PR branch: `gh pr checkout <PR>`.
+   If that finds nothing, locate it by the issue it closes and check it out:
+
+   ```bash
+   gh pr list --state open --search "Closes #<N>" --json number,title,headRefName
+   gh pr checkout <PR>
+   ```
 
 2. Read the linked issue and check the implementation against **its acceptance
    criteria**, not against your own taste.

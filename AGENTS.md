@@ -32,8 +32,9 @@ how to work in the repo.
   registry entry — `loader` and `summarize` stay untouched.
 - `tests/` mirrors the modules; test behavior, not snapshots of the sample file.
 
-Demo material, not product code: `tasks/` (worker specs), `docs/` (runbook,
-orchestration vocabulary), and `opencode.json` (pins the reviewer demo's model).
+Demo material, not product code: `tasks/` (coordinator brief and worker specs),
+`docs/` (runbook, orchestration vocabulary), and `opencode.json` (pins the
+reviewer demo's model).
 
 ## Traps
 
