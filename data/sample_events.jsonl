@@ -1,0 +1,20 @@
+{"ts": "2026-11-11T09:00:00Z", "level": "info",  "service": "api",    "message": "listening on :8080"}
+{"ts": "2026-11-11T09:00:04Z", "level": "info",  "service": "worker", "message": "queue connected"}
+{"ts": "2026-11-11T09:00:11Z", "level": "info",  "service": "db",     "message": "connection pool ready"}
+{"ts": "2026-11-11T09:01:32Z", "level": "warn",  "service": "api",    "message": "slow request: /v1/search took 1840ms"}
+{"ts": "2026-11-11T09:02:03Z", "level": "info",  "service": "api",    "message": "GET /v1/health 200"}
+{"ts": "2026-11-11T09:02:47Z", "level": "error", "service": "db",     "message": "deadlock detected on table orders"}
+{"ts": "2026-11-11T09:02:48Z", "level": "warn",  "service": "db",     "message": "retrying transaction (1/3)"}
+{"ts": "2026-11-11T09:02:49Z", "level": "info",  "service": "db",     "message": "transaction committed"}
+{"ts": "2026-11-11T09:03:15Z", "level": "info",  "service": "worker", "message": "processed 42 jobs"}
+{"ts": "2026-11-11T09:04:02Z", "level": "info",  "service": "api",    "message": "GET /v1/orders 200"}
+{"ts": "2026-11-11T09:05:41Z", "level": "warn",  "service": "worker", "message": "job retry: send-receipt (2/3)"}
+{"ts": "2026-11-11T09:06:20Z", "level": "info",  "service": "worker", "message": "processed 38 jobs"}
+{"ts": "2026-11-11T09:07:58Z", "level": "error", "service": "api",    "message": "unhandled exception in /v1/checkout"}
+{"ts": "2026-11-11T09:08:00Z", "level": "info",  "service": "api",    "message": "circuit breaker armed for checkout"}
+{"ts": "2026-11-11T09:09:33Z", "level": "info",  "service": "db",     "message": "vacuum completed"}
+{"ts": "2026-11-11T09:10:05Z", "level": "debug", "service": "worker", "message": "poll loop tick"}
+{"ts": "2026-11-11T09:12:44Z", "level": "fatal", "service": "db",     "message": "replication lag exceeded 60s"}
+{"ts": "2026-11-11T09:12:45Z", "level": "error", "service": "api",    "message": "read replica unavailable"}
+{"ts": "2026-11-11T09:14:10Z", "level": "warn",  "service": "api",    "message": "falling back to primary replica"}
+{"ts": "2026-11-11T09:16:22Z", "level": "info",  "service": "db",     "message": "replication caught up"}
