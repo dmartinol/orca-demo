@@ -5,8 +5,8 @@ worktree with `codex --profile enmaas`, and opens a PR. A second agent —
 `opencode --standalone` — reviews that PR against the issue's acceptance criteria
 and posts the review."
 
-Everything below is copy-pasteable. `<REPO_ID>`, `<PR>`, `<IMPL_TERM>`, and
-`<REVIEW_TERM>` are printed by the command that precedes them.
+Everything below is copy-pasteable. `<PR>`, `<IMPL_TERM>`, and `<REVIEW_TERM>`
+are printed by the command that precedes them.
 
 > Run from an Orca agent chat or Orca-managed terminal so Orca binds the Run to
 > your coordinator. From an external shell, pass `--from <terminal-handle>` (see
@@ -19,10 +19,17 @@ Everything below is copy-pasteable. `<REPO_ID>`, `<PR>`, `<IMPL_TERM>`, and
 ```bash
 gh auth status                                  # needs repo scope
 orca status --json                              # runtime is up
-orca repo list --json                           # find "orca-demo", copy its id
-orca repo set-base-ref --repo id:<REPO_ID> --ref main
+orca repo list --json                           # confirm "orca-demo" is listed
+orca repo set-base-ref --repo name:orca-demo --ref main
 make test                                       # 20 tests green
 ```
+
+**Assumption — `orca-demo` is the Orca display name.** `orca repo add --path .`
+derives that name from the folder, so this checkout must be registered as
+`orca-demo`. A clone in `~/code/demo` is registered as `demo`, and every
+`--repo name:orca-demo` below would fail. If yours differs, either re-register
+the folder or replace `--repo name:orca-demo` with `--repo path:/abs/path` (or
+the id from `orca repo list --json`).
 
 Check the launch environment **from an Orca terminal** (not this sandbox):
 
@@ -60,7 +67,7 @@ terminal yourself, then attach the orchestration task to that terminal.
 
 ```bash
 # 2a. isolated checkout + branch
-orca worktree create --name issue-1 --repo id:<REPO_ID> --no-parent --json
+orca worktree create --name issue-1 --repo name:orca-demo --no-parent --json
 
 # 2b. launch the exact CLI you want
 orca terminal create --worktree name:issue-1 --title "implement #1" \

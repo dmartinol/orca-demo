@@ -62,10 +62,15 @@ Requires Python 3.11+ (standard library only), the Orca app, an authenticated
 
 Issue **#1** (Markdown output format) is the canned target.
 
+Commands use `--repo name:orca-demo`: the repo must be registered in Orca under
+the display name `orca-demo`, which is what `orca repo add --path .` records from
+the folder name. If your folder or name differs, use `--repo path:<abs path>` or
+the id from `orca repo list --json`.
+
 **Implement** — new worktree, Codex with the `enmaas` profile:
 
 ```bash
-orca worktree create --name issue-1 --repo id:<REPO_ID> --no-parent --json
+orca worktree create --name issue-1 --repo name:orca-demo --no-parent --json
 
 orca terminal create --worktree name:issue-1 --title "implement #1" \
   --command "codex --profile enmaas -m rits/deepseek-ai/DeepSeek-V4.1-Flash-1017" --json

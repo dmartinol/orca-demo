@@ -81,10 +81,10 @@ orca orchestration task-list
 # implement (native launch, no custom argv)
 orca orchestration worker-start --agent codex --model <id> \
   --spec "Read tasks/01-implement-issue.md and implement issue #1." \
-  --worktree new-top-level --repo id:<REPO_ID> --name issue-1
+  --worktree new-top-level --repo name:orca-demo --name issue-1
 
 # implement (attach a terminal with an exact command)
-orca worktree create --name issue-1 --repo id:<REPO_ID> --no-parent --json
+orca worktree create --name issue-1 --repo name:orca-demo --no-parent --json
 orca terminal create --worktree name:issue-1 \
   --command "codex --profile enmaas -m rits/deepseek-ai/DeepSeek-V4.1-Flash-1017" --json
 orca terminal wait --terminal <HANDLE> --for tui-idle --timeout-ms 60000 --json
