@@ -1,24 +1,20 @@
 # Orca orchestration in one page
 
-Orca runs coding agents in **isolated git worktrees**, and lets one agent (the
-**coordinator**) hand work to several others and collect the results. This repo is
-shaped so that story is visible in `git log`, in the worktree list, and in the
-code itself.
+Orca runs coding agents in **isolated git worktrees** and lets one agent (the
+**coordinator**) hand work to others and collect the results. This repo uses the
+smallest useful shape: an implementer and a reviewer.
 
 ```text
-                          ┌───────────────────────┐
-                          │  Coordinator (you)    │
-                          │  one Orca chat        │
-                          └───────┬───────────────┘
-             worker-start         │        ▲  worker_done / question
-        ┌──────────────┬──────────┴────┬───┴───────────┐
-        ▼              ▼               ▼               ▼
-  worktree filters  worktree md    worktree html   worktree review
-  agent: codex      agent: claude  agent: codex    agent: claude
-  own branch        own branch     own branch      own branch
-        └──────────────┴──────────┬────┴───────────────┘
-                                  ▼
-                        merge + integrate + verify
+                 ┌─────────────────────┐
+                 │  Coordinator (you)  │
+                 └──────────┬──────────┘
+        worker-start        │        ▲  worker_done / question
+                 ┌──────────┴──────────┐
+                 ▼                     ▼
+         worker A: implement      worker B: review
+         codex, worktree+branch   claude, same checkout
+                 │                     ▲
+                 └──── PR on GitHub ───┘
 ```
 
 ## Vocabulary
@@ -30,30 +26,34 @@ code itself.
 | **Dispatch** | The assignment of a Task to a specific agent terminal. Its id is how you message or inspect the worker. |
 | **Worker** | The agent process doing a Task. It reports with `worker_done`, or asks with `ask` and waits. |
 | **Worktree** | A real `git worktree`: its own checkout and branch. Workers cannot step on each other's files. |
-| **Gate** | A decision that blocks a Task until a human (or coordinator) resolves it. |
+| **Gate** | A decision that blocks a Task until a human resolves it. Optional; not used in the basic flow. |
 | **Message** | Subject/body mail between agents: steering a live worker, answering a question, reporting. |
 
-## The coordinator loop
+## The two-worker loop
 
-1. **Create** a Run for the objective (`run-create`), or let the first worker create it.
-2. **Start every independent worker** (`worker-start --worktree new-top-level --repo id:<id> --name <short> --agent <agent>`).
-3. **End your turn.** This is the important part: Orca wakes the coordinator when a
-   worker finishes, asks a question, or escalates. Polling is both unnecessary and
-   discouraged — a polling script can consume the mail before Orca can deliver it.
-4. **React.** Answer questions with `reply`, steer with `send`, then wait again.
-5. **Integrate.** Merge the worker branches, start the next Task in the DAG (for
-   example the CLI integration), verify.
-6. **Report** to the human per Task: outcome, evidence, blockers.
+1. **Create the handoff artifact first.** Here: a GitHub issue whose body is the
+   spec (acceptance criteria + constraints).
+2. **Start the implementer** in a new worktree:
+   `worker-start --worktree new-top-level --repo id:<id> --name issue-1 --agent codex`.
+3. **End your turn.** Orca wakes the coordinator on `worker_done`, `question`, or
+   `escalation`. Polling is unnecessary and can consume the mail before Orca can
+   deliver it.
+4. **Start the reviewer** when the PR exists, in the same checkout, with a
+   different agent: `worker-start --worktree name:issue-1 --agent claude`.
+5. **Read the artifact, not the chat.** The PR and its review are the source of
+   truth; the worker's report is the index.
+6. **Loop if needed.** `send` the review back to the implementer; it pushes to the
+   same branch and reports. Start a re-review. Repeat until approved.
 
-## The worker side
+## Why the same worktree for review
 
-A worker gets a **self-contained spec** — goal, constraints, files it may edit, and
-the evidence that proves it is done. When finished it sends `worker_done` with an
-outcome; when blocked it sends `ask` and parks until answered.
+The implementer's checkout is already on the PR branch, with the index and build
+state warm. Starting the reviewer there means zero setup and no chance of
+reviewing a stale copy. The reviewer is read-only by spec, so sharing is safe.
 
-That is why the specs in `tasks/` are explicit about file ownership: three workers
-writing three disjoint sets of files merge cleanly. The one shared file
-(`pulse/cli.py`) is deliberately assigned to a fourth, dependent Task.
+The alternative — a second worktree on `--base-branch <pr-branch>` — is useful
+when you want the reviewer to be provably independent of the implementer's
+working tree.
 
 ## Command cheat sheet
 
@@ -63,39 +63,39 @@ orca status --json
 orca repo list --json
 orca worktree list
 orca worktree ps
-orca orchestration run-list
 orca orchestration task-list
-orca orchestration gate-list
 
 # start work
-orca orchestration worker-start --spec-file tasks/01-filters.md \
-  --worktree new-top-level --repo id:<REPO_ID> --name filters --agent codex
+orca orchestration worker-start --spec "Read tasks/01-implement-issue.md and implement issue #1." \
+  --worktree new-top-level --repo id:<REPO_ID> --name issue-1 --agent codex
+orca orchestration worker-start --spec "Review PR #<PR> per tasks/02-review-pr.md." \
+  --worktree name:issue-1 --agent claude
 
 # observe and steer
 orca orchestration worker-show --dispatch <DISPATCH_ID>
 orca orchestration worker-read --dispatch <DISPATCH_ID> --limit 20
 orca orchestration send --to dispatch:<DISPATCH_ID> \
-  --subject "Question" --body "Keep the public API exactly as specced."
+  --subject "Review feedback" --body "Address the findings on PR #<PR>."
 
-# gates
-orca orchestration gate-create --task <TASK_ID> --question "Merge and integrate?" \
-  --options '["merge","hold"]'
-orca orchestration gate-resolve --id <GATE_ID> --resolution "merge"
+# optional gate
+orca orchestration gate-create --task <TASK_ID> \
+  --question "Approve merge?" --options '["approve","hold"]'
+orca orchestration gate-resolve --id <GATE_ID> --resolution "approve"
 ```
 
 ## Failure modes worth showing
 
-- **A spec gap** — a worker asks a clarifying question mid-flight. Answer with
-  `reply`; no restart needed.
+- **A spec gap** — the worker asks a clarifying question. Answer with `reply`;
+  no restart needed.
 - **A bad direction** — steer a running worker with `send`; it receives the
   message when its current turn ends.
-- **A merge conflict** — deliberately absent here, because file ownership is
-  disjoint. That is a design property, not luck.
-- **A failed check** — a `worker_done` that reports failing tests is not done;
-  send the fix back to the same worker.
+- **Failing tests** — a `worker_done` that reports failing tests is not done.
+  Send the fix back to the same worker, same branch.
+- **A review you disagree with** — reply on the PR, not in chat. The PR is the
+  durable record.
 
 ## Why this repo is small on purpose
 
-The demo is about the **coordination**, not the product. Every module fits in a
-screen, has no dependencies, and has tests that run in milliseconds, so the whole
-audience can follow the diff and the verification live.
+The demo is about the **handoff**, not the product. Every module fits on a screen,
+has no dependencies, and the suite runs in milliseconds, so the audience can
+follow the diff and the verification live.

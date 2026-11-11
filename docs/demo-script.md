@@ -1,250 +1,166 @@
-# Live demo script (about 12 minutes)
+# Live demo script (about 6 minutes)
 
-**The pitch:** "One coordinator, five agents, five isolated worktrees, one
-integrated result. This is a real incident dashboard — small enough to read, real
-enough to test."
+**The pitch:** "One agent takes a GitHub issue, implements it in its own
+worktree, and opens a PR. A second agent — different model — reviews that PR
+against the issue's acceptance criteria and posts the review. Two commands."
 
-Everything below is copy-pasteable. `<REPO_ID>`, `<TASK_ID>`, `<DISPATCH_ID>`,
-`<BRANCH>`, and `<GATE_ID>` are printed by the command that precedes them.
+Everything below is copy-pasteable. `<REPO_ID>`, `<PR>`, and `<DISPATCH_ID>` are
+printed by the command that precedes them.
 
-> Run these from an Orca agent chat or Orca-managed terminal so Orca can bind the
-> Run to your coordinator. If you run from an external shell, pass
-> `--from <terminal-handle>` (see `orca terminal list --json`) or drive the same
-> steps from the Orca UI.
+> Run from an Orca agent chat or Orca-managed terminal so Orca binds the Run to
+> your coordinator. From an external shell, pass `--from <terminal-handle>` (see
+> `orca terminal list --json`).
 
 ---
 
-## 0. Setup (once, before the audience arrives)
+## 0. Setup (once)
 
 ```bash
-orca status --json                     # runtime is up
-orca repo add --path "$PWD" --json     # skip if already registered
-orca repo list --json                  # find "orca-demo", copy its id
+gh auth status                     # needs repo scope
+orca status --json                 # runtime is up
+orca repo list --json              # find "orca-demo", copy its id
 orca repo set-base-ref --repo id:<REPO_ID> --ref main
-make test                              # baseline is green: 20 tests
+make test                          # 20 tests green
 ```
 
-If `orca` reports `runtime_access_denied`, you are in a sandboxed shell: run the
-same command from an Orca terminal, or re-run it with your sandbox's escalation.
+The canned target is **issue #1**, "Add a Markdown output format to pulse
+report". Its acceptance criteria are the spec. To use your own issue, open one
+with `gh issue create` and substitute its number below.
 
-Give the audience a baseline to compare against:
+---
+
+## 1. Baseline (30 s)
 
 ```bash
-git tag demo-baseline
 make report
+```
+
+Say: *"20 events, 4 errors. One text renderer. The issue asks for a Markdown
+format, with escaping and an empty-state rule — small, but enough to review."*
+
+---
+
+## 2. Implement from the issue (2 min)
+
+```bash
+orca orchestration worker-start \
+  --spec "Read tasks/01-implement-issue.md and implement issue #1. Open a PR when green." \
+  --task-title "Implement issue #1" \
+  --worktree new-top-level --repo id:<REPO_ID> --name issue-1 \
+  --agent codex
+```
+
+**Then end your turn.** Orca wakes you on `worker_done`. While it works:
+
+```bash
 orca worktree ps
-```
-
----
-
-## 1. The baseline (1 min)
-
-Say: *"20 events, 4 errors, 982 seconds. One text renderer. This is the app the
-team has today."*
-
-```bash
-make test
-make report
-```
-
-Point at the repo map: `pulse/` (4 small modules), `tests/`, `tasks/` (the specs
-we are about to hand out).
-
----
-
-## 2. Fan out: three workers, three worktrees (3 min)
-
-Create the Run (optional — the first `worker-start` would do it):
-
-```bash
-orca orchestration run-create \
-  --objective "Pulse 0.2: filters + markdown + html renderers"
-```
-
-Start all three. Note the different agents: the point is that the spec is the
-interface, not the model.
-
-```bash
-orca orchestration worker-start \
-  --spec-file tasks/01-filters.md \
-  --task-title "Filters: window/level/service" \
-  --worktree new-top-level --repo id:<REPO_ID> --name filters \
-  --agent codex
-
-orca orchestration worker-start \
-  --spec-file tasks/02-markdown.md \
-  --task-title "Renderer: markdown" \
-  --worktree new-top-level --repo id:<REPO_ID> --name markdown \
-  --agent claude
-
-orca orchestration worker-start \
-  --spec-file tasks/03-html.md \
-  --task-title "Renderer: html" \
-  --worktree new-top-level --repo id:<REPO_ID> --name html \
-  --agent codex
-```
-
-**Then stop talking and end your turn.** Orca wakes you when each worker reports.
-Bonus talking point while they work: `orca worktree ps` and
-`orca worktree list` show three live checkouts; each receipt named its branch.
-
-Show the isolation in git:
-
-```bash
+orca orchestration task-list
 git log --oneline --graph --all --decorate
 ```
 
-Say: *"Three branches, zero shared files. The merge is boring by construction."*
+Say: *"New worktree, new branch. `main` is untouched until a human merges the
+PR."*
+
+The worker reports a branch, a commit sha, and a **PR URL**. The PR body must
+contain `Closes #1` and the test evidence — that is the definition of done.
 
 ---
 
-## 3. Steer one worker (1 min)
+## 3. Review the PR (2 min)
 
-While a worker is still running, send it a message. It receives it when its
-current turn ends; the worker does not need to be restarted.
-
-```bash
-orca orchestration send \
-  --to dispatch:<DISPATCH_ID> \
-  --subject "Contract reminder" \
-  --body "Keep the public API exactly as specced. Do not edit pulse/cli.py."
-```
-
-If a worker asks a question, answer it (in a chat Orca delivers it; from a shell
-use `reply`):
-
-```bash
-orca orchestration reply --id <MESSAGE_ID> --body "<answer>"
-```
-
-Inspect a worker without stealing its terminal:
-
-```bash
-orca orchestration worker-show --dispatch <DISPATCH_ID>
-orca orchestration worker-read --dispatch <DISPATCH_ID> --limit 20
-```
-
----
-
-## 4. Fan in: merge, gate, integrate (3 min)
-
-Each `worker_done` gives you a task id and branch. Merge the three:
-
-```bash
-git switch main
-git merge --no-ff <FILTERS_BRANCH>  -m "feat: filters (codex worker)"
-git merge --no-ff <MARKDOWN_BRANCH> -m "feat: markdown renderer (claude worker)"
-git merge --no-ff <HTML_BRANCH>     -m "feat: html renderer (codex worker)"
-make test                            # baseline suite + every worker's new tests
-```
-
-Now show a **decision gate**. Create the dependent Task explicitly, then block it.
-`--deps` takes the three worker task ids from the `worker_done` receipts:
-
-```bash
-orca orchestration task-create \
-  --spec-file tasks/04-integration.md \
-  --task-title "CLI integration" \
-  --deps '["<FILTERS_TASK>","<MARKDOWN_TASK>","<HTML_TASK>"]'
-# -> prints <INTEGRATION_TASK_ID>
-
-orca orchestration gate-create \
-  --task <INTEGRATION_TASK_ID> \
-  --question "Merge complete and tests green — start integration?" \
-  --options '["start","hold"]'
-# -> prints <GATE_ID>
-
-orca orchestration gate-list
-orca orchestration gate-resolve --id <GATE_ID> --resolution "start"
-```
-
-Start the integration worker **from that gated Task** (not a new spec, so the
-gate and dependencies still apply), branched from the merged `main`:
+Start a **different agent** in the **same checkout**:
 
 ```bash
 orca orchestration worker-start \
-  --task <INTEGRATION_TASK_ID> \
-  --worktree new-top-level --repo id:<REPO_ID> --name integrate \
-  --base-branch main --agent codex
-```
-
-Say: *"This is the DAG: three parallel leaves, one join that owns the only shared
-file."*
-
----
-
-## 5. Cross-agent review (2 min)
-
-Merge the integration branch, then have a **different agent** review the result:
-
-```bash
-git switch main
-git merge --no-ff <INTEGRATION_BRANCH> -m "feat: wire filters and renderers into CLI"
-
-orca orchestration worker-start \
-  --spec-file tasks/05-review.md \
-  --task-title "Review: contracts, escaping, tests" \
-  --worktree new-top-level --repo id:<REPO_ID> --name review \
+  --spec "Read tasks/02-review-pr.md and review PR #<PR> against issue #1." \
+  --task-title "Review PR #<PR>" \
+  --worktree name:issue-1 \
   --agent claude
 ```
 
-The reviewer writes `docs/review-notes.md` — findings with `file:line`, no code
-changes. Merge it and show it:
+Say: *"The handoff is the PR, not a copied folder. The reviewer reads the diff,
+runs the same tests, and checks the issue's criteria — not its own taste."*
+
+While it works:
 
 ```bash
-git merge --no-ff <REVIEW_BRANCH> -m "docs: review notes"
-cat docs/review-notes.md
+orca orchestration worker-read --dispatch <REVIEW_DISPATCH_ID> --limit 20
+gh pr view <PR> --json title,state,reviewDecision,statusCheckRollup
 ```
+
+The payoff:
+
+```bash
+gh pr view <PR> --comments
+gh pr diff <PR>
+```
+
+A review now exists on the PR: approved, commented, or changes requested, with
+`file:line` findings.
 
 ---
 
-## 6. The payoff (1 min)
+## 4. Optional: the fix loop (2 min)
+
+If the review requested changes, send it back — same worker, same branch:
 
 ```bash
-make test
-python3 -m pulse report data/sample_events.jsonl --format text
-python3 -m pulse report data/sample_events.jsonl --format markdown
-python3 -m pulse report data/sample_events.jsonl --format html
-python3 -m pulse report data/sample_events.jsonl --window 5m --level error
+orca orchestration send \
+  --to dispatch:<IMPLEMENTER_DISPATCH_ID> \
+  --subject "Review feedback on PR #<PR>" \
+  --body "Address the findings in the PR review, push to the same branch, and report the new commit sha."
 ```
 
-Then the one slide that says it all:
+When it reports, review the new push:
 
 ```bash
-git log --graph --oneline --decorate --all
+orca orchestration worker-start \
+  --spec "Read tasks/02-review-pr.md and re-review PR #<PR> for issue #1. The implementer pushed fixes." \
+  --task-title "Re-review PR #<PR>" \
+  --worktree name:issue-1 \
+  --agent claude
+```
+
+Say: *"The loop is just messages and another review. No new worktree, no lost
+context."*
+
+---
+
+## 5. Wrap (30 s)
+
+```bash
+gh pr view <PR> --json state,reviewDecision,statusCheckRollup
+git log --oneline --graph --all --decorate
 orca worktree ps
 ```
 
-Say: *"Five agents, five branches, one coordinator, and every claim is backed by
-a test run. That's the orchestration."*
+Say: *"Issue to PR to review, with two different agents, one isolated branch, and
+every claim backed by a test run."*
 
 ---
 
 ## Reset between demos
 
 ```bash
-orca worktree list                     # remove what you created
-orca worktree rm --worktree name:filters    --delete-branch
-orca worktree rm --worktree name:markdown   --delete-branch
-orca worktree rm --worktree name:html       --delete-branch
-orca worktree rm --worktree name:integrate  --delete-branch
-orca worktree rm --worktree name:review     --delete-branch
+gh pr close <PR> --delete-branch        # or merge it, then reset main
+orca worktree rm --worktree name:issue-1 --delete-branch
 
 git switch main
-git reset --hard demo-baseline         # destructive: back to the tagged baseline
+git reset --hard origin/main
 git clean -fd
 ```
 
-`git reset --hard` is only safe here because `demo-baseline` is the tagged,
-committed starting point. Do not run it in a repo with work you care about.
+Do not reset a repo with work you care about. Issue #1 stays open for the next
+run; close or reopen it as needed (`gh issue close 1` / `gh issue reopen 1`).
 
 ## Troubleshooting
 
 | Symptom | Fix |
 | --- | --- |
-| `runtime_access_denied` | The shell is sandboxed. Run from an Orca terminal, or re-run with escalation. Never run `orca open` to fix this. |
-| `worker-start` exits non-zero | Read `failedStage` in the JSON; do not re-run blindly. Check `orca worktree list` for a half-created worktree. |
+| `runtime_access_denied` | Sandboxed shell. Run from an Orca terminal, or re-run with escalation. Never run `orca open` to fix this. |
+| Worker cannot use `gh` | Check `gh auth status` **as the worker's user**; the agent inherits your shell environment. |
+| `worker-start` exits non-zero | Read `failedStage`; check `orca worktree list` for a half-created worktree. Do not re-run blindly. |
 | Worker never reports | You are polling. End your turn; Orca wakes you on `worker_done`, `question`, or `escalation`. |
-| Merge conflict | A worker edited outside its owned files. Send it back rather than fixing by hand — that is the demo's lesson. |
-| Branch name unknown | `git -C <worktree-path> branch --show-current`, or read the `worker-start` receipt. |
-| New worktree kept open | Expected: `new-top-level` workers stay open so you can talk to them. Release with `orca orchestration worker-release --dispatch <ID>`. |
+| PR number unknown | It is in the implementer's `worker_done`; or `gh pr list --state open`. |
+| Reviewer starts on the wrong code | `--worktree name:issue-1` must name the implementer's worktree. Check `orca worktree list`. |
+| No CI checks on the PR | Actions must be enabled for the repo; the workflow is `.github/workflows/tests.yml`. |

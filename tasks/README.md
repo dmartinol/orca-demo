@@ -1,24 +1,17 @@
 # Task specs
 
-Each file in this folder is a **self-contained prompt** for one orchestration worker.
-The coordinator passes a spec to Orca verbatim:
+Two specs, two workers, one handoff artifact: the pull request.
+
+| Spec | Worker | Works in | Produces |
+| --- | --- | --- | --- |
+| `01-implement-issue.md` | implementer (e.g. codex) | new worktree, new branch | commit + pushed branch + PR |
+| `02-review-pr.md` | reviewer (e.g. claude) | the implementer's worktree | a review on the PR |
+
+The dispatch prompt names the issue or PR number and points at the spec, e.g.
 
 ```bash
-orca orchestration worker-start --spec-file tasks/01-filters.md ...
+--spec "Read tasks/01-implement-issue.md and implement issue #1. Open a PR when green."
 ```
 
-Why they are files instead of chat messages:
-
-- The spec is reviewable, versionable, and reusable across demo runs.
-- It names the files the worker may edit, so parallel workers stay in disjoint
-  file sets and merge without conflicts.
-- It states the evidence required (`make test` green, command output) so a
-  `worker_done` is verifiable instead of "trust me".
-
-| Spec | Worker owns | Depends on |
-| --- | --- | --- |
-| `01-filters.md` | `pulse/filters.py`, `tests/test_filters.py` | — |
-| `02-markdown.md` | `pulse/render_markdown.py`, `tests/test_render_markdown.py` | — |
-| `03-html.md` | `pulse/render_html.py`, `tests/test_render_html.py` | — |
-| `04-integration.md` | `pulse/cli.py`, `tests/test_cli_formats.py` | 01, 02, 03 |
-| `05-review.md` | `docs/review-notes.md` | 04 |
+The spec file holds the durable part — constraints, checklist, evidence — while
+the one-line dispatch carries the number that changes per run.
