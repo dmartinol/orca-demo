@@ -18,7 +18,8 @@ Everything below is copy-pasteable. `<REPO_ID>`, `<TASK_ID>`, `<DISPATCH_ID>`,
 
 ```bash
 orca status --json                     # runtime is up
-orca repo add --path "$PWD" --json     # note the repo id
+orca repo add --path "$PWD" --json     # skip if already registered
+orca repo list --json                  # find "orca-demo", copy its id
 orca repo set-base-ref --repo id:<REPO_ID> --ref main
 make test                              # baseline is green: 20 tests
 ```
