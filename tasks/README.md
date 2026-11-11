@@ -4,8 +4,8 @@ Two specs, two workers, one handoff artifact: the pull request.
 
 | Spec | Worker | Works in | Produces |
 | --- | --- | --- | --- |
-| `01-implement-issue.md` | implementer (codex --profile enmaas) | new worktree, new branch | commit + pushed branch + PR |
-| `02-review-pr.md` | reviewer (opencode --standalone) | the implementer's worktree | a review on the PR |
+| `01-implement-issue.md` | implementer (codex · gpt-5.6-luna high) | new worktree, new branch | commit + pushed branch + PR |
+| `02-review-pr.md` | reviewer (opencode · gpt-6-luna xhigh) | the implementer's worktree | a review on the PR |
 
 The dispatch prompt names the issue or PR number and points at the spec, e.g.
 

@@ -11,7 +11,7 @@ binding; this file only adds the workflow and the definition of done.
 
 ## Steps
 
-1. Read the issue, `README.md`, and the relevant modules under `pulse/`.
+1. Read the issue, `AGENTS.md`, and the relevant modules under `pulse/`.
 2. Implement the feature in this checkout. Match the existing style; Python
    3.11, standard library only.
 3. Add or extend tests under `tests/`. Run `make test` until it is green.
