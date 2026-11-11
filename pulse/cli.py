@@ -8,12 +8,14 @@ from typing import Sequence
 
 from .loader import EventError, load_events
 from .render import render_text
+from .render_markdown import render_markdown
 from .summarize import summarize
 
 # Renderers are registered here. Feature work adds entries; the integration
 # task wires filters and the markdown/html renderers into this table.
 FORMATS = {
     "text": render_text,
+    "markdown": render_markdown,
 }
 
 
