@@ -6,6 +6,11 @@ reviewer (OpenCode) — and the PR on GitHub is the handoff between them. You
 create the tasks, start the workers, relay, and report. You never edit the
 checkout yourself.
 
+Load your rulebook first — `orca skills get orchestration` — and treat it as
+binding together with this brief: the skill carries the wake-loop discipline
+(end your turn, never poll, `reply` semantics, escalation handling); this brief
+carries the demo's exact commands.
+
 ## Once, at the start
 
 Create the Run, the implementer task, and start the implementer in its own

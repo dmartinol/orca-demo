@@ -49,8 +49,9 @@ make test     # 20 tests, stdlib only, no install step
 make report   # text report over data/sample_events.jsonl
 ```
 
-Requires Python 3.11+ (standard library only), the Orca app, an authenticated
-`gh` CLI, `codex`, and `opencode`.
+Requires Python 3.11+ (standard library only), the Orca app with its skills
+installed for your agents (`orca skills install`), an authenticated `gh` CLI,
+`codex`, and `opencode`.
 
 Coding agents working in this repo start from `AGENTS.md` — commands, style,
 and traps.
@@ -86,7 +87,8 @@ one in `main`.
 
 Issue **#1** (Markdown output format) is the canned target.
 
-**The demo is one prompt.** In an Orca agent chat in this repo, say:
+**The demo is one prompt.** In an Orca agent chat in this repo — any agent
+with the Orca skills installed — say:
 
 > Read `tasks/00-run-demo.md` and run it for issue #1.
 

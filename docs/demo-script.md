@@ -9,8 +9,9 @@ Everything below is copy-pasteable. `<PR>` comes from the coordinator's report
 (or `gh pr list --state open`); the task and dispatch ids are printed by the
 command that precedes them.
 
-> The coordinator must be an Orca agent chat — any agent — so Orca can bind the
-> Run and wake it. The watching commands work from any Orca-managed terminal.
+> The coordinator must be an Orca agent chat — any agent with the Orca skills
+> installed — so Orca can bind the Run and wake it. The watching commands work
+> from any Orca-managed terminal.
 
 ---
 
@@ -19,10 +20,16 @@ command that precedes them.
 ```bash
 gh auth status                                  # needs repo scope
 orca status --json                              # runtime is up
+orca skills installed                           # orca-cli + orchestration, for the coordinator
 orca repo list --json                           # confirm "orca-demo" is listed
 orca repo set-base-ref --repo name:orca-demo --ref main
 make test                                       # 20 tests green
 ```
+
+If `orca skills installed` does not list `orchestration` and `orca-cli`, run
+`orca skills install`: the coordinator agent drives `orca orchestration` and
+needs the version-matched guides — the brief carries the demo's commands, the
+skill carries the wake-loop discipline.
 
 **Assumption — `orca-demo` is the Orca display name.** `orca repo add --path .`
 derives that name from the folder, so this checkout must be registered as
