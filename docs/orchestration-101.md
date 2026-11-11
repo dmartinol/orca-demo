@@ -12,7 +12,8 @@ smallest useful shape: an implementer and a reviewer.
                  ┌──────────┴──────────┐
                  ▼                     ▼
          worker A: implement      worker B: review
-         codex, worktree+branch   claude, same checkout
+         codex --profile enmaas   opencode --standalone
+         own worktree+branch      same checkout
                  │                     ▲
                  └──── PR on GitHub ───┘
 ```
@@ -29,17 +30,29 @@ smallest useful shape: an implementer and a reviewer.
 | **Gate** | A decision that blocks a Task until a human resolves it. Optional; not used in the basic flow. |
 | **Message** | Subject/body mail between agents: steering a live worker, answering a question, reporting. |
 
+## Two ways to launch a worker
+
+| Way | Command | When |
+| --- | --- | --- |
+| **Native** | `worker-start --agent codex --model <id>` | Orca chooses the command. Nice default, no extra flags. |
+| **Attach** | `terminal create --command "<exact argv>"` → `terminal wait --for tui-idle` → `worker-start --terminal <handle>` | You need flags Orca does not expose, e.g. `codex --profile enmaas` or `opencode --standalone`. |
+
+Attaching is not a hack: Orca supervises an agent terminal it did not start, and
+everything after that — mail, `worker-show`, `worker-read`, gates — behaves
+identically.
+
 ## The two-worker loop
 
 1. **Create the handoff artifact first.** Here: a GitHub issue whose body is the
    spec (acceptance criteria + constraints).
 2. **Start the implementer** in a new worktree:
-   `worker-start --worktree new-top-level --repo id:<id> --name issue-1 --agent codex`.
+   `worktree create --name issue-1` → terminal with `codex --profile enmaas` →
+   `worker-start --terminal <handle> --worktree name:issue-1`.
 3. **End your turn.** Orca wakes the coordinator on `worker_done`, `question`, or
    `escalation`. Polling is unnecessary and can consume the mail before Orca can
    deliver it.
-4. **Start the reviewer** when the PR exists, in the same checkout, with a
-   different agent: `worker-start --worktree name:issue-1 --agent claude`.
+4. **Start the reviewer** when the PR exists, in the same checkout, with
+   `opencode --standalone` on a second terminal.
 5. **Read the artifact, not the chat.** The PR and its review are the source of
    truth; the worker's report is the index.
 6. **Loop if needed.** `send` the review back to the implementer; it pushes to the
@@ -65,11 +78,17 @@ orca worktree list
 orca worktree ps
 orca orchestration task-list
 
-# start work
-orca orchestration worker-start --spec "Read tasks/01-implement-issue.md and implement issue #1." \
-  --worktree new-top-level --repo id:<REPO_ID> --name issue-1 --agent codex
-orca orchestration worker-start --spec "Review PR #<PR> per tasks/02-review-pr.md." \
-  --worktree name:issue-1 --agent claude
+# implement (native launch, no custom argv)
+orca orchestration worker-start --agent codex --model <id> \
+  --spec "Read tasks/01-implement-issue.md and implement issue #1." \
+  --worktree new-top-level --repo id:<REPO_ID> --name issue-1
+
+# implement (attach a terminal with an exact command)
+orca worktree create --name issue-1 --repo id:<REPO_ID> --no-parent --json
+orca terminal create --worktree name:issue-1 \
+  --command "codex --profile enmaas -m rits/deepseek-ai/DeepSeek-V4.1-Flash-1017" --json
+orca terminal wait --terminal <HANDLE> --for tui-idle --timeout-ms 60000 --json
+orca orchestration worker-start --spec "..." --terminal <HANDLE> --worktree name:issue-1
 
 # observe and steer
 orca orchestration worker-show --dispatch <DISPATCH_ID>
