@@ -43,6 +43,9 @@ make report   # text report over data/sample_events.jsonl
 Requires Python 3.11+ (standard library only), the Orca app, an authenticated
 `gh` CLI, `codex`, and `opencode`.
 
+Coding agents working in this repo start from `AGENTS.md` — commands, style,
+and traps.
+
 ## Usage
 
 ```bash
@@ -69,23 +72,6 @@ By service:
 
 Renderers register in the `FORMATS` table in `pulse/cli.py`; `text` is the only
 one in `main`.
-
-## Repo map
-
-| Path | What it is |
-| --- | --- |
-| `pulse/loader.py` | Parse and validate JSON-lines events. |
-| `pulse/summarize.py` | Counts, error totals, time window. |
-| `pulse/render.py` | Plain-text renderer (the only one in `main`). |
-| `pulse/cli.py` | `pulse report FILE [--format ...]`. |
-| `tests/` | `unittest` suite, fast enough to run live. |
-| `data/sample_events.jsonl` | 20 realistic events across `api`, `db`, `worker`. |
-| `AGENTS.md` | Instructions for coding agents: commands, style, traps. |
-| `opencode.json` | Pins the reviewer's OpenCode model: `openai/gpt-6-luna#xhigh`. |
-| `tasks/01-implement-issue.md` | Workflow for the implementer. |
-| `tasks/02-review-pr.md` | Workflow and checklist for the reviewer. |
-| `docs/demo-script.md` | 6-minute runbook with copy-paste commands. |
-| `docs/orchestration-101.md` | Run / Task / Dispatch vocabulary and the loop. |
 
 ## Run the demo
 
