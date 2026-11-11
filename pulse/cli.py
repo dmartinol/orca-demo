@@ -8,6 +8,7 @@ from typing import Sequence
 
 from .loader import EventError, load_events
 from .render import render_text
+from .render_json import render_json
 from .render_markdown import render_markdown
 from .summarize import summarize
 
@@ -15,6 +16,7 @@ from .summarize import summarize
 # task wires filters and the markdown/html renderers into this table.
 FORMATS = {
     "text": render_text,
+    "json": render_json,
     "markdown": render_markdown,
 }
 
